@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>编程之美 - 搭建高可用 Eureka 注册中心</title>
+  <title>TBOP - Eureka 服务注册</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="../../../css/lib/prism.css" rel="stylesheet" type="text/css" />
@@ -10,7 +10,7 @@
   <script src="../../../js/lib/prism.js"></script>
 </head>
 <body>
-<nav class="top-bar">
+  <nav class="top-bar">
   <section>
     <ul>
       <li>The beauty of programming</li>
@@ -18,17 +18,8 @@
   </section>
 </nav>
 <div class="container">
-<h1 class="title">搭建高可用 Eureka 注册中心</h1>
+<h1 class="title">Eureka 服务注册</h1>
 <hr/>
-<h3>配置 hosts 文件</h3>
-<p>windows：C:\Windows\System32\drivers\etc</p>
-<p>mac：/private/etc</p>
-<p>linux：/etc</p>
-<pre>
-<code class="language-*">127.0.0.1 peer1
-127.0.0.1 peer2
-127.0.0.1 peer3</code>
-</pre>
 <h3>创建 Maven 工程</h3>
 <h4>pom.xml</h4>
 <pre>
@@ -47,7 +38,7 @@
     </parent>
 
     <groupId>com.yangsh</groupId>
-    <artifactId>eureka</artifactId>
+    <artifactId>provider-service</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -59,8 +50,23 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-commons</artifactId>
         </dependency>
     </dependencies>
 
@@ -103,55 +109,74 @@
 </project>
 </textarea></code></pre>
 <h3>启动类</h3>
-<h4>EurekaApplication.java</h4>
+<h4>ProviderApplication.java</h4>
 <pre>
-<code class="language-java line-numbers">package com.yangsh.eureka;
+<code class="language-java line-numbers">package com.yangsh.provider.service;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
-@EnableEurekaServer
+@EnableDiscoveryClient
 @SpringBootApplication
-public class EurekaApplication {
-    
+public class ProviderApplication {
+
     public static void main(String[] args) {
-        SpringApplication.run(EurekaApplication.class, args);
+        SpringApplication.run(ProviderApplication.class, args);
     }
 
 }</code>
 </pre>
+<h3>控制器类</h3>
+<h4>ProviderController.java</h4>
+<pre>
+<code class="language-java line-numbers"><textarea>package com.yangsh.provider.service.web;
+
+import com.netflix.discovery.guice.EurekaModule;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.cloud.client.serviceregistry.Registration;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
+import java.util.List;
+
+@RestController
+public class ProviderController {
+
+    @Resource
+    private Registration registration;
+
+    @Resource
+    private DiscoveryClient discoveryClient;
+
+    @RequestMapping(value = "/hello", method = RequestMethod.GET)
+    public String hello() {
+        return "Hello World";
+    }
+
+}</textarea></code>
+</pre>
 <h3>配置文件 【位于 src/main/resources 目录】</h3>
-<h4>application-peer1.properties</h4>
+<h4>application.properties</h4>
 <pre>
-<code class="language-properties line-numbers">spring.application.name=eureka-server
-server.port=1111
-eureka.instance.hostname=peer1
-eureka.client.serviceUrl.defaultZone=http://peer2:2222/eureka/,http://peer3:3333/eureka/</code>
+<code class="language-properties line-numbers">spring.application.name=provider-service
+server.port=8888
+eureka.client.serviceUrl.defaultZone=http://peer1:1111/eureka/,http://peer2:2222/eureka/,http://peer3:3333/eureka/
+eureka.instance.prefer-ip-address=true
+eureka.instance.instanceId=${spring.application.name}:${spring.cloud.client.ip-address}:${server.port}</code>
 </pre>
-<h4>application-peer2.properties</h4>
+<p>说明：eureka.instance.prefer-ip-address=true 配置项表示使用 IP 进行服务注册（默认使用 hostname 进行服务注册）</p>
+<span class="warn-info">注：使用 eureka.instance.prefer-ip-address=true 需要引入如下依赖包，否则不生效</span>
 <pre>
-<code class="language-properties line-numbers">spring.application.name=eureka-server
-server.port=2222
-eureka.instance.hostname=peer2
-eureka.client.serviceUrl.defaultZone=http://peer1:1111/eureka/,http://peer3:3333/eureka/</code>
-</pre>
-<h4>application-peer3.properties</h4>
-<pre>
-<code class="language-properties line-numbers">spring.application.name=eureka-server
-server.port=3333
-eureka.instance.hostname=peer3
-eureka.client.serviceUrl.defaultZone=http://peer1:1111/eureka/,http://peer2:2222/eureka/</code>
-</pre>
-<span class="warn-info">注：eureka.client.register-with-eureka 和 eureka.client.fetch-registry 默认为 true</span>
-<h3>启动应用</h3>
-<pre class="command-line" data-user="root" data-host="localhost">
-<code class="language-bash">java -jar eureka-1.0-SNAPSHOT.jar --spring.profiles.active=peer1
-java -jar eureka-1.0-SNAPSHOT.jar --spring.profiles.active=peer2
-java -jar eureka-1.0-SNAPSHOT.jar --spring.profiles.active=peer3</code>
-</pre>
-<span class="warn-info">注：启动之前需要先打包，打包命令：# mvn clean package</span>
-<p>启动成功后，可通过 <span class="link">http://peer1:1111、 http://peer2:2222、http://peer3:3333</span> 访问注册中心</p>
+<code class="language-xml"><textarea>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-commons</artifactId>
+</dependency>
+</textarea></code></pre>
 </div>
 </body>
 </html>
