@@ -6,12 +6,18 @@ body {
 
 .container {
 	margin: 0 auto;
+	padding-top: 50px; 
 	width: 1200px;
 }
 
 .top-bar {
+	border: 1px solid #fff;
 	background: #333;
 	height: 2.8125rem;
+	position: fixed;
+	top: 0px;
+	width: 100%;
+	z-index: 100;
 }
 
 .title {
@@ -48,6 +54,7 @@ h1, h2, h3, h4, h5, h6 {
 
 h4 a {
 	font-weight: normal;
+	margin-left: 30px;
 }
 
 hr {
