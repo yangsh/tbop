@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>编程之美-搭建高可用 Eureka 注册中心</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="../../../css/lib/prism.css" rel="stylesheet" type="text/css" />
+  <link href="../../../css/index.css" rel="stylesheet" type="text/css" />
+  <script src="../../../js/lib/jquery-3.4.1.min.js"></script>
+  <script src="../../../js/lib/prism.js"></script>
+</head>
+<body>
+<nav class="top-bar">
+  <section>
+    <ul>
+      <li>The beauty of programming</li>
+    </ul>
+  </section>
+</nav>
+<div class="container">
+<h2 class="title">搭建高可用 Eureka 注册中心</h2>
+<hr/>
+<h3>配置 hosts 文件</h3>
+<p>windows：C:\Windows\System32\drivers\etc</p>
+<p>mac：/private/etc</p>
+<p>linux：/etc</p>
+<pre>
+<code class="language-*">127.0.0.1 peer1
+127.0.0.1 peer2
+127.0.0.1 peer3</code>
+</pre>
+<h3>创建 Maven 工程</h3>
+<h4>pom.xml</h4>
+<pre>
+<code class="language-xml line-numbers"><textarea><?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.1.5.RELEASE</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <groupId>com.yangsh</groupId>
+    <artifactId>eureka</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <java.version>1.8</java.version>
+        <spring-cloud.version>Greenwich.RELEASE</spring-cloud.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+        </dependency>
+    </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <repositories>
+        <repository>
+            <id>mvnrepository</id>
+            <name>mvnrepository</name>
+            <url>https://www.mvnrepository.com/</url>
+            <layout>default</layout>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project></textarea></code>
+</pre>
+<h3>启动类</h3>
+<pre>
+<code class="language-java line-numbers">package com.yangsh.eureka;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+
+@EnableEurekaServer
+@SpringBootApplication
+public class EurekaApplication {
+    
+    public static void main(String[] args) {
+        SpringApplication.run(EurekaApplication.class, args);
+    }
+
+}</code>
+</pre>
+<h3>配置文件 【位于 src/main/resources 目录】</h3>
+<h4>application-peer1.properties</h4>
+<pre>
+<code class="language-properties line-numbers">spring.application.name=eureka-server
+server.port=1111
+eureka.instance.hostname=peer1
+eureka.client.serviceUrl.defaultZone=http://peer2:2222/eureka/,http://peer3:3333/eureka/</code>
+</pre>
+<h4>application-peer2.properties</h4>
+<pre>
+<code class="language-properties line-numbers">spring.application.name=eureka-server
+server.port=2222
+eureka.instance.hostname=peer2
+eureka.client.serviceUrl.defaultZone=http://peer1:1111/eureka/,http://peer3:3333/eureka/</code>
+</pre>
+<h4>application-peer3.properties</h4>
+<pre>
+<code class="language-properties line-numbers">spring.application.name=eureka-server
+server.port=3333
+eureka.instance.hostname=peer3
+eureka.client.serviceUrl.defaultZone=http://peer1:1111/eureka/,http://peer2:2222/eureka/</code>
+</pre>
+<span class="warn-info">注：eureka.client.register-with-eureka 和 eureka.client.fetch-registry 默认为 true</span>
+<h3>启动</h3>
+<pre class="command-line" data-user="root" data-host="localhost">
+<code class="language-bash">java -jar eureka-1.0-SNAPSHOT.jar --spring.profiles.active=peer1
+java -jar eureka-1.0-SNAPSHOT.jar --spring.profiles.active=peer2
+java -jar eureka-1.0-SNAPSHOT.jar --spring.profiles.active=peer3</code>
+</pre>
+<span class="warn-info">注：启动之前需要先打包，打包命令：# mvn clean package</span>
+<p>启动成功后，可通过 <span class="link">http://peer1:1111、 http://peer2:2222、http://peer3:3333</span> 访问注册中心</p>
+</div>
+</body>
+</html>
